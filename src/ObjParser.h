@@ -20,9 +20,6 @@ namespace objviewer
 		std::vector<vec3> verticesIndexes;
 		std::vector<vec3> normalsIndexes;
 		std::vector<vec2> uvsIndexes;
-		std::vector<vec3> vertices;
-		std::vector<vec3> normals;
-		std::vector<vec2> uvs;
 		std::string file;
 		MtlMaterial *currentMaterial;
 		MtlParser mtl;
@@ -36,9 +33,7 @@ namespace objviewer
 
 	public:
 		ObjParser(std::string file);
-		inline std::vector<vec3> &getVertices() {return (this->vertices);};
-		inline std::vector<vec3> &getNormals() {return (this->normals);};
-		inline std::vector<vec2> &getUvs() {return (this->uvs);};
+		inline MtlParser &getMtlParser() {return (this->mtl);};
 
 	};
 

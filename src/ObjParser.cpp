@@ -284,15 +284,15 @@ namespace objviewer
 			WARN("Invalid face uv 3");
 			return;
 		}
-		this->vertices.push_back(this->verticesIndexes[vertexesIndices[0] - 1]);
-		this->vertices.push_back(this->verticesIndexes[vertexesIndices[1] - 1]);
-		this->vertices.push_back(this->verticesIndexes[vertexesIndices[2] - 1]);
-		this->normals.push_back(this->normalsIndexes[normalsIndices[0] - 1]);
-		this->normals.push_back(this->normalsIndexes[normalsIndices[1] - 1]);
-		this->normals.push_back(this->normalsIndexes[normalsIndices[2] - 1]);
-		this->uvs.push_back(this->uvsIndexes[uvsIndices[0] - 1]);
-		this->uvs.push_back(this->uvsIndexes[uvsIndices[1] - 1]);
-		this->uvs.push_back(this->uvsIndexes[uvsIndices[2] - 1]);
+		this->currentMaterial->vertices.push_back(this->verticesIndexes[vertexesIndices[0] - 1]);
+		this->currentMaterial->vertices.push_back(this->verticesIndexes[vertexesIndices[1] - 1]);
+		this->currentMaterial->vertices.push_back(this->verticesIndexes[vertexesIndices[2] - 1]);
+		this->currentMaterial->normals.push_back(this->normalsIndexes[normalsIndices[0] - 1]);
+		this->currentMaterial->normals.push_back(this->normalsIndexes[normalsIndices[1] - 1]);
+		this->currentMaterial->normals.push_back(this->normalsIndexes[normalsIndices[2] - 1]);
+		this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[0] - 1]);
+		this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[1] - 1]);
+		this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[2] - 1]);
 	}
 
 	void ObjParser::parseUsemtl(std::string &line)
@@ -309,7 +309,7 @@ namespace objviewer
 			directory = "./";
 		else
 			directory = this->file.substr(0, dirPos + 1);
-		std::string file = directory + line.substr(7, line.length() - 7);
+		std::string file = directory + line.substr(7, line.length() - 8);
 		this->mtl.loadFile(file);
 	}
 }

@@ -3,10 +3,13 @@
 
 # include <librender/vec/vec4.h>
 # include <librender/vec/vec3.h>
-# include <unordered_map>
+# include <librender/vec/vec2.h>
+# include <vector>
+# include <string>
 
 using librender::vec4;
 using librender::vec3;
+using librender::vec2;
 
 namespace objviewer
 {
@@ -18,15 +21,19 @@ namespace objviewer
 		vec3 diffuse;
 		vec4 specular;
 		std::string diffuseMap;
+		std::vector<vec3> vertices;
+		std::vector<vec3> normals;
+		std::vector<vec2> uvs;
 	} MtlMaterial;
 
 	class MtlParser
 	{
 
 	private:
-		std::unordered_map<std::string, MtlMaterial> materials;
+		std::vector<MtlMaterial> materials;
 		MtlMaterial *currentMaterial;
 		MtlMaterial defaultMaterial;
+		std::string file;
 		void parseLine(std::string &line);
 		void parseNewmtl(std::string &line);
 		void parseKa(std::string &line);
@@ -40,6 +47,7 @@ namespace objviewer
 		void loadFile(std::string &file);
 		MtlMaterial *getMaterial(std::string &name);
 		MtlMaterial *getDefaultMaterial() {return (&this->defaultMaterial);};
+		inline std::vector<MtlMaterial> &getMaterials() {return (this->materials);};
 
 	};
 

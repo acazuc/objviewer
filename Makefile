@@ -4,7 +4,7 @@ CC = g++
 
 CFLAGS = -Wall -Wextra -Werror -O0 -g -march=native #-flto=8
 
-INCLUDES_PATH = include -I lib/glfw/include -I lib/glew/include -I lib/librender/include -I lib/glm
+INCLUDES_PATH = include -I lib/glfw/include -I lib/glew/include -I lib/librender/include -I lib/glm -I lib/libformat/include
 
 SRCS_PATH = src/
 
@@ -20,7 +20,7 @@ OBJS_NAME = $(SRCS_NAME:.cpp=.o)
 
 OBJS = $(addprefix $(OBJS_PATH), $(OBJS_NAME))
 
-LIBRARY = -L lib/glfw/src -l:libglfw3.a -L lib/glew/lib -l:libGLEW.a -L lib/librender -l:librender.a -lGL -lX11 -lXrandr -lXinerama -lXcursor -lXxf86vm -ldl -lrt -lm -lpthread
+LIBRARY = -L lib/glfw/src -l:libglfw3.a -L lib/glew/lib -l:libGLEW.a -L lib/librender -l:librender.a -L lib/libformat -l:libformat.a -Llib/libpng/.libs -l:libpng16.a -Llib/zlib -l:libz.a -lGL -lX11 -lXrandr -lXinerama -lXcursor -lXxf86vm -ldl -lrt -lm -lpthread
 
 all: odir $(NAME)
 

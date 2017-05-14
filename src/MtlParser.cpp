@@ -19,8 +19,8 @@ namespace objviewer
 
 	void MtlParser::loadFile(std::string &file)
 	{
-		(void)file;
-		std::ifstream ifs("Documents/alar.mtl");
+		this->file = file;
+		std::ifstream ifs(file);
 		if (!ifs.is_open())
 			ERROR("can't open file");
 		std::string line;
@@ -59,8 +59,9 @@ namespace objviewer
 		std::string materialName = line.substr(7, line.length() - 7);
 		MtlMaterial material;
 		std::memset(&material, 0, sizeof(material));
-		std::pair<std::unordered_map<std::string, MtlMaterial>::iterator, bool> pair = this->materials.emplace(materialName, material);
-		this->currentMaterial = &pair.first->second;
+		material.name = materialName;
+		this->materials.push_back(material);
+		this->currentMaterial = &this->materials.back();
 	}
 
 	void MtlParser::parseKa(std::string &line)
@@ -204,16 +205,23 @@ namespace objviewer
 			WARN("parseKs: no current material");
 			return;
 		}
-		std::string tmp = line.substr(7, line.length() - 7);
-		this->currentMaterial->diffuseMap = tmp;
+		std::string directory;
+		size_t dirPos = this->file.find_last_of('/');
+		if (dirPos == std::string::npos)
+			directory = "./";
+		else
+			directory = this->file.substr(0, dirPos + 1);
+		this->currentMaterial->diffuseMap = directory + line.substr(7, line.length() - 8);
 	}
 
 	MtlMaterial *MtlParser::getMaterial(std::string &material)
 	{
-		std::unordered_map<std::string, MtlMaterial>::iterator iter = this->materials.find(material);
-		if (iter == this->materials.end())
-			return (NULL);
-		return (&iter->second);
+		for (uint32_t i = 0; i < this->materials.size(); ++i)
+		{
+			if (!material.compare(this->materials[i].name))
+				return (&this->materials[i]);
+	}
+		return (&this->defaultMaterial);
 	}
 
 }
