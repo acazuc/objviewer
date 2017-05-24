@@ -22,7 +22,7 @@ namespace objviewer
 		this->file = file;
 		std::ifstream ifs(file);
 		if (!ifs.is_open())
-			ERROR("can't open file");
+			ERROR("can't open file (" << file << ")");
 		std::string line;
 		while (std::getline(ifs, line))
 		{
@@ -46,12 +46,18 @@ namespace objviewer
 			parseKd(line);
 		else if (!header.compare("Ks"))
 			parseKs(line);
+		else if (!header.compare("Ke"))
+			parseKe(line);
 		else if (!header.compare("Ns"))
 			parseNs(line);
+		else if (!header.compare("Ni"))
+			parseNi(line);
+		else if (!header.compare("illum"))
+			parseIllum(line);
 		else if (!header.compare("map_Kd"))
 			parseMap_Kd(line);
 		else
-			WARN("Unknown line");
+			WARN("Unknown line: " << line);
 	}
 
 	void MtlParser::parseNewmtl(std::string &line)
@@ -181,11 +187,50 @@ namespace objviewer
 		this->currentMaterial->specular.z = std::min(1., std::max(0., std::stod(tmp)));
 	}
 
+	void MtlParser::parseKe(std::string &line)
+	{
+		if (!this->currentMaterial)
+		{
+			WARN("parseKe: no current material");
+			return;
+		}
+		size_t pos = line.find(' ', 3);
+		if (pos == std::string::npos || pos == 3)
+		{
+			WARN("Invalid Ke line 1");
+			return;
+		}
+		std::string tmp = line.substr(3, pos - 3);
+		this->currentMaterial->emissive.x = std::min(1., std::max(0., std::stod(tmp)));
+		size_t oldPos = pos;
+		pos = line.find(' ', pos + 1);
+		if (pos == std::string::npos || pos == oldPos)
+		{
+			WARN("Invalid Ke line 2");
+			return;
+		}
+		tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+		this->currentMaterial->emissive.y = std::min(1., std::max(0., std::stod(tmp)));
+		oldPos = pos;
+		pos = line.find(' ', pos + 1);
+		if (pos == oldPos)
+		{
+			WARN("Invalid Ke line 3");
+			return;
+		}
+		if (pos == std::string::npos)
+			tmp = line.substr(oldPos + 1, line.length() - (oldPos + 1));
+		else
+
+			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+		this->currentMaterial->emissive.z = std::min(1., std::max(0., std::stod(tmp)));
+	}
+
 	void MtlParser::parseNs(std::string &line)
 	{
 		if (!this->currentMaterial)
 		{
-			WARN("parseKs: no current material");
+			WARN("parseNs: no current material");
 			return;
 		}
 		size_t pos = line.find(' ', 3);
@@ -198,11 +243,45 @@ namespace objviewer
 		this->currentMaterial->specular.w = std::min(1., std::max(0., std::stod(tmp)));
 	}
 
+	void MtlParser::parseNi(std::string &line)
+	{
+		if (!this->currentMaterial)
+		{
+			WARN("parseNi: no current material");
+			return;
+		}
+		size_t pos = line.find(' ', 3);
+		std::string tmp;
+		if (pos == std::string::npos)
+			tmp = line.substr(3, line.length() - 3);
+		else
+
+			tmp = line.substr(3, pos - 3);
+		this->currentMaterial->density = std::min(10., std::max(0.001, std::stod(tmp)));
+	}
+
+	void MtlParser::parseIllum(std::string &line)
+	{
+		if (!this->currentMaterial)
+		{
+			WARN("parseIllum: no current material");
+			return;
+		}
+		size_t pos = line.find(' ', 6);
+		std::string tmp;
+		if (pos == std::string::npos)
+			tmp = line.substr(6, line.length() - 6);
+		else
+
+			tmp = line.substr(6, pos - 6);
+		this->currentMaterial->illumination = std::min(10, std::max(0, std::stoi(tmp)));
+	}
+
 	void MtlParser::parseMap_Kd(std::string &line)
 	{
 		if (!this->currentMaterial)
 		{
-			WARN("parseKs: no current material");
+			WARN("parseMap_Kd: no current material");
 			return;
 		}
 		std::string directory;
@@ -211,7 +290,7 @@ namespace objviewer
 			directory = "./";
 		else
 			directory = this->file.substr(0, dirPos + 1);
-		this->currentMaterial->diffuseMap = directory + line.substr(7, line.length() - 8);
+		this->currentMaterial->diffuseMap = directory + line.substr(7, line.length() - 7);
 	}
 
 	MtlMaterial *MtlParser::getMaterial(std::string &material)

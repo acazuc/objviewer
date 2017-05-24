@@ -2,13 +2,11 @@
 # define OBJ_PARSER_H
 
 # include "MtlParser.h"
-# include <librender/vec/vec3.h>
-# include <librender/vec/vec2.h>
+# include <glm/vec3.hpp>
+# include <glm/vec2.hpp>
 # include <vector>
 # include <string>
 
-using librender::vec3;
-using librender::vec2;
 
 namespace objviewer
 {
@@ -17,9 +15,9 @@ namespace objviewer
 	{
 
 	private:
-		std::vector<vec3> verticesIndexes;
-		std::vector<vec3> normalsIndexes;
-		std::vector<vec2> uvsIndexes;
+		std::vector<glm::vec3> verticesIndexes;
+		std::vector<glm::vec3> normalsIndexes;
+		std::vector<glm::vec2> uvsIndexes;
 		std::string file;
 		MtlMaterial *currentMaterial;
 		MtlParser mtl;

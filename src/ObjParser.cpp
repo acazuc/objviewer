@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <cstring>
 
 namespace objviewer
 {
@@ -48,12 +49,12 @@ namespace objviewer
 		else if (!header.compare("g"))
 			{}
 		else
-			WARN("Unknown line");
+			WARN("Unknown line: " << line);
 	}
 
 	void ObjParser::parseVertice(std::string &line)
 	{
-		vec3 vertice;
+		glm::vec3 vertice;
 		size_t pos = line.find(' ', 2);
 		if (pos == std::string::npos || pos == 2)
 		{
@@ -89,7 +90,7 @@ namespace objviewer
 
 	void ObjParser::parseUv(std::string &line)
 	{
-		vec2 uv;
+		glm::vec2 uv;
 		size_t pos = line.find(' ', 3);
 		if (pos == std::string::npos || pos == 3)
 		{
@@ -116,7 +117,7 @@ namespace objviewer
 
 	void ObjParser::parseNormal(std::string &line)
 	{
-		vec3 normal;
+		glm::vec3 normal;
 		size_t pos = line.find(' ', 3);
 		if (pos == std::string::npos || pos == 3)
 		{
@@ -155,6 +156,7 @@ namespace objviewer
 		uint32_t vertexesIndices[3];
 		uint32_t normalsIndices[3];
 		uint32_t uvsIndices[3];
+		std::memset(uvsIndices, 0, sizeof(uvsIndices));
 		size_t pos = line.find('/', 2);
 		if (pos == std::string::npos || pos == 2)
 		{
@@ -165,22 +167,29 @@ namespace objviewer
 		vertexesIndices[0] = std::stoi(tmp);
 		size_t oldPos = pos;
 		pos = line.find('/', pos + 1);
-		if (pos == std::string::npos || pos == oldPos)
+		if (pos != oldPos + 1)
 		{
-			WARN("Invalid face line 2");
-			return;
+			if (pos == std::string::npos)
+			{
+				WARN("Invalid face line 2");
+				return;
+			}
+			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+			std::cout << "tmp: " << tmp << ", pos: " << pos << ", oldPos: " << oldPos << std::endl;
+			uvsIndices[0] = std::stoi(tmp);
 		}
-		tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
-		uvsIndices[0] = std::stoi(tmp);
 		oldPos = pos;
 		pos = line.find(' ', pos + 1);
-		if (pos == std::string::npos || pos == oldPos)
+		if (pos != oldPos + 1)
 		{
-			WARN("Invalid face line 3");
-			return;
+			if (pos == std::string::npos)
+			{
+				WARN("Invalid face line 3");
+				return;
+			}
+			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+			normalsIndices[0] = std::stoi(tmp);
 		}
-		tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
-		normalsIndices[0] = std::stoi(tmp);
 		oldPos = pos;
 		pos = line.find('/', pos + 1);
 		if (pos == std::string::npos || pos == oldPos)
@@ -192,22 +201,28 @@ namespace objviewer
 		vertexesIndices[1] = std::stoi(tmp);
 		oldPos = pos;
 		pos = line.find('/', pos + 1);
-		if (pos == std::string::npos || pos == oldPos)
+		if (pos != oldPos + 1)
 		{
-			WARN("Invalid face line 5");
-			return;
+			if (pos == std::string::npos)
+			{
+				WARN("Invalid face line 5");
+				return;
+			}
+			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+			uvsIndices[1] = std::stoi(tmp);
 		}
-		tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
-		uvsIndices[1] = std::stoi(tmp);
 		oldPos = pos;
 		pos = line.find(' ', pos + 1);
-		if (pos == std::string::npos || pos == oldPos)
+		if (pos != oldPos + 1)
 		{
-			WARN("Invalid face line 6");
-			return;
+			if (pos == std::string::npos)
+			{
+				WARN("Invalid face line 6");
+				return;
+			}
+			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+			normalsIndices[1] = std::stoi(tmp);
 		}
-		tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
-		normalsIndices[1] = std::stoi(tmp);
 		oldPos = pos;
 		pos = line.find('/', pos + 1);
 		if (pos == std::string::npos || pos == oldPos)
@@ -219,26 +234,27 @@ namespace objviewer
 		vertexesIndices[2] = std::stoi(tmp);
 		oldPos = pos;
 		pos = line.find('/', pos + 1);
-		if (pos == std::string::npos || pos == oldPos)
+		if (pos != oldPos + 1)
 		{
-			WARN("Invalid face line 8");
-			return;
+			if (pos == std::string::npos)
+			{
+				WARN("Invalid face line 8");
+				return;
+			}
+			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+			uvsIndices[2] = std::stoi(tmp);
 		}
-		tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
-		uvsIndices[2] = std::stoi(tmp);
 		oldPos = pos;
 		pos = line.find(' ', pos + 1);
-		if (pos == oldPos)
+		if (pos != oldPos + 1)
 		{
-			WARN("Invalid face line 9");
-			return;
-		}
-		if (pos == std::string::npos)
-			tmp = line.substr(oldPos + 1, line.length() - (oldPos + 1));
-		else
+			if (pos == std::string::npos)
+				tmp = line.substr(oldPos + 1, line.length() - (oldPos + 1));
+			else
 
-			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
-		normalsIndices[2] = std::stoi(tmp);
+				tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
+			normalsIndices[2] = std::stoi(tmp);
+		}
 		if (this->verticesIndexes.size() < vertexesIndices[0])
 		{
 			WARN("Invalid face vertex 1");
@@ -269,17 +285,17 @@ namespace objviewer
 			WARN("Invalid face normal 3");
 			return;
 		}
-		if (this->uvsIndexes.size() < uvsIndices[0])
+		if (uvsIndices[0] && this->uvsIndexes.size() < uvsIndices[0])
 		{
 			WARN("Invalid face uv 1");
 			return;
 		}
-		if (this->uvsIndexes.size() < uvsIndices[1])
+		if (uvsIndices[1] && this->uvsIndexes.size() < uvsIndices[1])
 		{
 			WARN("Invalid face uv 2");
 			return;
 		}
-		if (this->uvsIndexes.size() < uvsIndices[2])
+		if (uvsIndices[3] && this->uvsIndexes.size() < uvsIndices[2])
 		{
 			WARN("Invalid face uv 3");
 			return;
@@ -290,9 +306,18 @@ namespace objviewer
 		this->currentMaterial->normals.push_back(this->normalsIndexes[normalsIndices[0] - 1]);
 		this->currentMaterial->normals.push_back(this->normalsIndexes[normalsIndices[1] - 1]);
 		this->currentMaterial->normals.push_back(this->normalsIndexes[normalsIndices[2] - 1]);
-		this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[0] - 1]);
-		this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[1] - 1]);
-		this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[2] - 1]);
+		if (uvsIndices[0])
+			this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[0] - 1]);
+		else
+			this->currentMaterial->uvs.push_back(glm::vec3(0, 0, 0));
+		if (uvsIndices[1])
+			this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[1] - 1]);
+		else
+			this->currentMaterial->uvs.push_back(glm::vec3(0, 0, 0));
+		if (uvsIndices[2])
+			this->currentMaterial->uvs.push_back(this->uvsIndexes[uvsIndices[2] - 1]);
+		else
+			this->currentMaterial->uvs.push_back(glm::vec3(0, 0, 0));
 	}
 
 	void ObjParser::parseUsemtl(std::string &line)
@@ -309,7 +334,7 @@ namespace objviewer
 			directory = "./";
 		else
 			directory = this->file.substr(0, dirPos + 1);
-		std::string file = directory + line.substr(7, line.length() - 8);
+		std::string file = directory + line.substr(7, line.length() - 7);
 		this->mtl.loadFile(file);
 	}
 }

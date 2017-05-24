@@ -11,6 +11,7 @@ SRCS_PATH = src/
 SRCS_NAME = Main.cpp \
 	ObjParser.cpp \
 	MtlParser.cpp \
+	FpsManager.cpp \
 
 SRCS = $(addprefix $(SRCS_PATH), $(SRCS_NAME))
 
