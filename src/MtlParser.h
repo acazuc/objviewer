@@ -19,6 +19,7 @@ namespace objviewer
 		glm::vec4 specular;
 		glm::vec3 emissive;
 		float density;
+		float opacity;
 		uint8_t illumination;
 		std::string diffuseMap;
 		std::vector<glm::vec3> vertices;
@@ -44,6 +45,8 @@ namespace objviewer
 		void parseNi(std::string &line);
 		void parseIllum(std::string &line);
 		void parseMap_Kd(std::string &line);
+		void parseD(std::string &line);
+		void parseTr(std::string &line);
 
 	public:
 		MtlParser();

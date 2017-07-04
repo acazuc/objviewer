@@ -58,11 +58,12 @@ uniform vec3 ambientColor;\n\
 uniform vec3 diffuseColor;\n\
 uniform vec4 specularColor;\n\
 uniform vec3 emissiveColor;\n\
+uniform float opacity;\n\
 uniform sampler2D tex;\n\
 \n\
 void main()\n\
 {\n\
-	vec3 LightColor = vec3(4.5, 4.5, 4.5);\n\
+	vec3 LightColor = vec3(1, 1, 1);\n\
 	float distance = length(LightPosition_worldspace - Position_worldspace);\n\
 	vec3 n = normalize(Normal_cameraspace);\n\
 	vec3 l = normalize(LightDirection_cameraspace);\n\
@@ -72,11 +73,11 @@ void main()\n\
 	float cosAlpha = clamp(dot(E, R), 0, 1);\n\
 	vec3 color = diffuseColor * LightColor * cosTheta + ambientColor + emissiveColor;\n\
 	vec4 texCol = texture2D(tex, UV);\n\
-	gl_FragColor = texCol * vec4(color, 1) + vec4(specularColor.xyz * LightColor * pow(cosAlpha, specularColor.w) * cosAlpha, 1);\n\
+	gl_FragColor = opacity * (texCol * vec4(color, 1) + vec4(specularColor.xyz * LightColor * pow(cosAlpha, specularColor.w) * cosAlpha, 1));\n\
 }\n\
 "};
 
-# define MOVE_SPEED 1
+# define MOVE_SPEED 0.1
 /*
 static void GLErrors(std::string err)
 {
@@ -117,15 +118,18 @@ namespace objviewer
 		ObjParser obj(av[1]);
 		glfwWindowHint(GLFW_SAMPLES, 8);
 		window = new Window("ObjViewer", 1920, 1080);
+		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+			ERROR("Failed to initialize OpenGL context");
+		glEnable(GL_TEXTURE_2D);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glClearColor(0, 0, 0, 1);
+		window->show();
 		window->enableFullscreen();
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
-		glEnable(GL_CULL_FACE);
+		//glEnable(GL_CULL_FACE);
 		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-		glewExperimental = GL_TRUE;
-		GLenum glewErr = glewInit();
-		if (glewErr != GLEW_OK)
-			ERROR("Failed to init GLEW: " << glewGetErrorString(glewErr));
 		glfwSetInputMode(window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		window->setVSync(true);
 		FragmentShader *frag = new FragmentShader(fshad, sizeof(fshad));
@@ -143,6 +147,7 @@ namespace objviewer
 		GLint EmissiveColorID = glGetUniformLocation(prog->getId(), "emissiveColor");
 		GLint LightID = glGetUniformLocation(prog->getId(), "LightPosition_worldspace");
 		GLint TexID = glGetUniformLocation(prog->getId(), "tex");
+		GLint OpacityID = glGetUniformLocation(prog->getId(), "opacity");
 		uint32_t partsCount = obj.getMtlParser().getMaterials().size();
 		GLuint vertexBuffer[partsCount];
 		glGenBuffers(partsCount, vertexBuffer);
@@ -202,9 +207,9 @@ namespace objviewer
 			if (window->isKeyDown(GLFW_KEY_S))
 				posZ -= MOVE_SPEED;
 			if (window->isKeyDown(GLFW_KEY_A))
-				posX -= MOVE_SPEED;
-			if (window->isKeyDown(GLFW_KEY_D))
 				posX += MOVE_SPEED;
+			if (window->isKeyDown(GLFW_KEY_D))
+				posX -= MOVE_SPEED;
 			if (window->isKeyDown(GLFW_KEY_SPACE))
 				posY += MOVE_SPEED;
 			if (window->isKeyDown(GLFW_KEY_LEFT_SHIFT))
@@ -213,7 +218,7 @@ namespace objviewer
 			glm::mat4 View = glm::mat4(1.0f);
 			View = glm::rotate(View, glm::vec2(window->getMouseY() / 4000. * M_PI, 0).x, glm::vec3(1, 0, 0));
 			View = glm::rotate(View, glm::vec2(window->getMouseX() / 4000. * M_PI, 0).x, glm::vec3(0, 1, 0));
-			View = glm::translate(View, glm::vec3(posX, -posY, -posZ));
+			View = glm::translate(View, glm::vec3(-posX, -posY, -posZ));
 			glm::mat4 Model = glm::translate(glm::mat4(1.0f), glm::vec3(0, -2, 0));
 			glm::mat4 mvp = Projection * View * Model;
 			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
@@ -232,6 +237,7 @@ namespace objviewer
 				glUniform3f(DiffuseColorID, obj.getMtlParser().getMaterials()[i].diffuse.x, obj.getMtlParser().getMaterials()[i].diffuse.y, obj.getMtlParser().getMaterials()[i].diffuse.z);
 				glUniform4f(SpecularColorID, obj.getMtlParser().getMaterials()[i].specular.x, obj.getMtlParser().getMaterials()[i].specular.y, obj.getMtlParser().getMaterials()[i].specular.z, obj.getMtlParser().getMaterials()[i].specular.w);
 				glUniform3f(EmissiveColorID, obj.getMtlParser().getMaterials()[i].emissive.x, obj.getMtlParser().getMaterials()[i].emissive.y, obj.getMtlParser().getMaterials()[i].emissive.z);
+				glUniform1f(OpacityID, obj.getMtlParser().getMaterials()[i].opacity);
 				glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]);
 				glVertexAttribPointer(vertexPosition_modelspaceID, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 				glBindBuffer(GL_ARRAY_BUFFER, normalBuffer[i]);

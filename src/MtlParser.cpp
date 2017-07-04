@@ -15,6 +15,7 @@ namespace objviewer
 		this->defaultMaterial.diffuse.x = 0.5;
 		this->defaultMaterial.diffuse.x = 0.5;
 		this->defaultMaterial.diffuse.x = 0.5;
+		this->defaultMaterial.opacity = 1;
 	}
 
 	void MtlParser::loadFile(std::string &file)
@@ -56,6 +57,10 @@ namespace objviewer
 			parseIllum(line);
 		else if (!header.compare("map_Kd"))
 			parseMap_Kd(line);
+		else if (!header.compare("d"))
+			parseD(line);
+		else if (!header.compare("Tr"))
+			parseTr(line);
 		else
 			WARN("Unknown line: " << line);
 	}
@@ -66,6 +71,7 @@ namespace objviewer
 		MtlMaterial material;
 		std::memset(&material, 0, sizeof(material));
 		material.name = materialName;
+		material.opacity = 1;
 		this->materials.push_back(material);
 		this->currentMaterial = &this->materials.back();
 	}
@@ -293,13 +299,49 @@ namespace objviewer
 		this->currentMaterial->diffuseMap = directory + line.substr(7, line.length() - 7);
 	}
 
+	void MtlParser::parseD(std::string &line)
+	{
+		if (!this->currentMaterial)
+		{
+			WARN("parseD: no current material");
+			return;
+		}
+		size_t pos = line.find(' ', 2);
+		std::string tmp;
+		if (pos == std::string::npos)
+			tmp = line.substr(2, line.length() - 2);
+		else
+
+			tmp = line.substr(2, pos - 2);
+		this->currentMaterial->opacity = std::min(1., std::max(0., std::stod(tmp)));
+	
+	}
+	
+	void MtlParser::parseTr(std::string &line)
+	{
+		if (!this->currentMaterial)
+		{
+			WARN("parseTr: no current material");
+			return;
+		}
+		size_t pos = line.find(' ', 2);
+		std::string tmp;
+		if (pos == std::string::npos)
+			tmp = line.substr(2, line.length() - 2);
+		else
+
+			tmp = line.substr(2, pos - 2);
+		this->currentMaterial->opacity = 1 - std::min(1., std::max(0., std::stod(tmp)));
+	
+	}
+
 	MtlMaterial *MtlParser::getMaterial(std::string &material)
 	{
 		for (uint32_t i = 0; i < this->materials.size(); ++i)
 		{
 			if (!material.compare(this->materials[i].name))
 				return (&this->materials[i]);
-	}
+		}
 		return (&this->defaultMaterial);
 	}
 
