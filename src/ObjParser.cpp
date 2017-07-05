@@ -177,7 +177,6 @@ namespace objviewer
 				return;
 			}
 			tmp = line.substr(oldPos + 1, pos - (oldPos + 1));
-			std::cout << "tmp: " << tmp << ", pos: " << pos << ", oldPos: " << oldPos << std::endl;
 			uvsIndices[0] = std::stoi(tmp);
 		}
 		oldPos = pos;

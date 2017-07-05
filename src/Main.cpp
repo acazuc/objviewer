@@ -75,7 +75,7 @@ void main()\n\
 	float cosAlpha = clamp(dot(E, R), 0, 1);\n\
 	vec3 color = diffuseColor * LightColor * cosTheta * lightPower / clamp(((distance * distance) / 450), 0, 1) + ambientColor * vec3(ambientValue, ambientValue, ambientValue) + emissiveColor;\n\
 	vec4 texCol = texture2D(tex, UV);\n\
-	gl_FragColor = vec4(vec3(texCol * vec4(color, 1) + vec4(clamp(specularColor.xyz * LightColor * lightPower * pow(cosAlpha, specularColor.w), 0, 1), 1)), opacity);\n\
+	gl_FragColor = vec4(vec3(texCol) * color + clamp(specularColor.xyz * LightColor * lightPower * pow(cosAlpha, specularColor.w), 0, 1), opacity);\n\
 }\n\
 "};
 
@@ -141,7 +141,7 @@ namespace objviewer
 		window->enableFullscreen();
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
-		//glEnable(GL_CULL_FACE);
+		glEnable(GL_CULL_FACE);
 		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		glfwSetInputMode(window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		window->setVSync(true);
@@ -216,18 +216,53 @@ namespace objviewer
 			window->clearScreen();
 			window->pollEvents();
 			prog->use();
-			if (window->isKeyDown(GLFW_KEY_W))
-				posZ += MOVE_SPEED;
-			if (window->isKeyDown(GLFW_KEY_S))
-				posZ -= MOVE_SPEED;
-			if (window->isKeyDown(GLFW_KEY_A))
-				posX += MOVE_SPEED;
-			if (window->isKeyDown(GLFW_KEY_D))
-				posX -= MOVE_SPEED;
-			if (window->isKeyDown(GLFW_KEY_SPACE))
-				posY += MOVE_SPEED;
-			if (window->isKeyDown(GLFW_KEY_LEFT_SHIFT))
-				posY -= MOVE_SPEED;
+			{
+				double angle = 90 + window->getMouseX() / 4000. * 180;
+				bool wDown = window->isKeyDown(GLFW_KEY_W);
+				bool sDown = window->isKeyDown(GLFW_KEY_S);
+				bool aDown = window->isKeyDown(GLFW_KEY_A);
+				bool dDown = window->isKeyDown(GLFW_KEY_D);
+				bool spDown = window->isKeyDown(GLFW_KEY_SPACE);
+				bool shDown = window->isKeyDown(GLFW_KEY_LEFT_SHIFT);
+				if (wDown && sDown)
+				{
+					wDown = false;
+					sDown = false;
+				}
+				if (aDown && dDown)
+				{
+					aDown = false;
+					dDown = false;
+				}
+				if (spDown && shDown)
+				{
+					spDown = false;
+					shDown = false;
+				}
+				if (wDown || aDown || sDown || dDown)
+				{
+					if (wDown && aDown)
+						angle += 135;
+					else if (wDown && dDown)
+						angle -= 135;
+					else if (sDown && aDown)
+						angle += 45;
+					else if (sDown && dDown)
+						angle -= 45;
+					else if (wDown)
+						angle += 180;
+					else if (aDown)
+						angle += 90;
+					else if (dDown)
+						angle -= 90;
+					posX += cos(angle / 180 * M_PI) * MOVE_SPEED;
+					posZ += sin(angle / 180 * M_PI) * MOVE_SPEED;
+				}
+				if (shDown)
+					posY -= MOVE_SPEED;
+				else if (spDown)
+					posY += MOVE_SPEED;
+			}
 			glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float) 1280 / (float)720, 0.1f, 1000.0f);
 			glm::mat4 View = glm::mat4(1.0f);
 			View = glm::rotate(View, glm::vec2(window->getMouseY() / 4000. * M_PI, 0).x, glm::vec3(1, 0, 0));
@@ -247,7 +282,7 @@ namespace objviewer
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, textures[i]);
 				glUniform1i(TexID, 0);
-				glUniform1f(AmbientValueID, 0);
+				glUniform1f(AmbientValueID, 0.1);
 				glUniform3f(AmbientColorID, obj.getMtlParser().getMaterials()[i].ambient.x, obj.getMtlParser().getMaterials()[i].ambient.y, obj.getMtlParser().getMaterials()[i].ambient.z);
 				glUniform3f(DiffuseColorID, obj.getMtlParser().getMaterials()[i].diffuse.x, obj.getMtlParser().getMaterials()[i].diffuse.y, obj.getMtlParser().getMaterials()[i].diffuse.z);
 				glUniform4f(SpecularColorID, obj.getMtlParser().getMaterials()[i].specular.x, obj.getMtlParser().getMaterials()[i].specular.y, obj.getMtlParser().getMaterials()[i].specular.z, obj.getMtlParser().getMaterials()[i].specular.w);
