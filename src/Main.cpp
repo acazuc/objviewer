@@ -58,12 +58,14 @@ uniform vec3 ambientColor;\n\
 uniform vec3 diffuseColor;\n\
 uniform vec4 specularColor;\n\
 uniform vec3 emissiveColor;\n\
+uniform float ambientValue;\n\
 uniform float opacity;\n\
 uniform sampler2D tex;\n\
 \n\
 void main()\n\
 {\n\
 	vec3 LightColor = vec3(1, 1, 1);\n\
+	float lightPower = 1;\n\
 	float distance = length(LightPosition_worldspace - Position_worldspace);\n\
 	vec3 n = normalize(Normal_cameraspace);\n\
 	vec3 l = normalize(LightDirection_cameraspace);\n\
@@ -71,9 +73,9 @@ void main()\n\
 	vec3 E = normalize(EyeDirection_cameraspace);\n\
 	vec3 R = reflect(-l, n);\n\
 	float cosAlpha = clamp(dot(E, R), 0, 1);\n\
-	vec3 color = diffuseColor * LightColor * cosTheta + ambientColor + emissiveColor;\n\
+	vec3 color = diffuseColor * LightColor * cosTheta * lightPower / clamp(((distance * distance) / 450), 0, 1) + ambientColor * vec3(ambientValue, ambientValue, ambientValue) + emissiveColor;\n\
 	vec4 texCol = texture2D(tex, UV);\n\
-	gl_FragColor = opacity * (texCol * vec4(color, 1) + vec4(specularColor.xyz * LightColor * pow(cosAlpha, specularColor.w) * cosAlpha, 1));\n\
+	gl_FragColor = vec4(vec3(texCol * vec4(color, 1) + vec4(clamp(specularColor.xyz * LightColor * lightPower * pow(cosAlpha, specularColor.w), 0, 1), 1)), opacity);\n\
 }\n\
 "};
 
@@ -100,6 +102,14 @@ static void GLErrors(std::string err)
 	}
 }
 */
+
+uint64_t nanotime()
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (ts.tv_sec * 1000000000 + ts.tv_nsec);
+}
+
 namespace objviewer
 {
 
@@ -115,7 +125,10 @@ namespace objviewer
 		posZ = 0;
 		if (ac != 2)
 			ERROR("You must specify an obj file");
+		uint64_t started = nanotime();
 		ObjParser obj(av[1]);
+		uint64_t ended = nanotime();
+		LOG("parsed in " << (ended - started) / 1000000 << " ms");
 		glfwWindowHint(GLFW_SAMPLES, 8);
 		window = new Window("ObjViewer", 1920, 1080);
 		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -148,6 +161,7 @@ namespace objviewer
 		GLint LightID = glGetUniformLocation(prog->getId(), "LightPosition_worldspace");
 		GLint TexID = glGetUniformLocation(prog->getId(), "tex");
 		GLint OpacityID = glGetUniformLocation(prog->getId(), "opacity");
+		GLint AmbientValueID = glGetUniformLocation(prog->getId(), "ambientValue");
 		uint32_t partsCount = obj.getMtlParser().getMaterials().size();
 		GLuint vertexBuffer[partsCount];
 		glGenBuffers(partsCount, vertexBuffer);
@@ -224,7 +238,7 @@ namespace objviewer
 			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
 			glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &View[0][0]);
 			glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &Model[0][0]);
-			glUniform3f(LightID, 0, 0, -5);
+			glUniform3f(LightID, 4.85, 4.32, 5.44);
 			glEnableVertexAttribArray(vertexPosition_modelspaceID);
 			glEnableVertexAttribArray(vertexNormal_modelspaceID);
 			glEnableVertexAttribArray(vertexUV_modelspaceID);
@@ -233,6 +247,7 @@ namespace objviewer
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, textures[i]);
 				glUniform1i(TexID, 0);
+				glUniform1f(AmbientValueID, 0);
 				glUniform3f(AmbientColorID, obj.getMtlParser().getMaterials()[i].ambient.x, obj.getMtlParser().getMaterials()[i].ambient.y, obj.getMtlParser().getMaterials()[i].ambient.z);
 				glUniform3f(DiffuseColorID, obj.getMtlParser().getMaterials()[i].diffuse.x, obj.getMtlParser().getMaterials()[i].diffuse.y, obj.getMtlParser().getMaterials()[i].diffuse.z);
 				glUniform4f(SpecularColorID, obj.getMtlParser().getMaterials()[i].specular.x, obj.getMtlParser().getMaterials()[i].specular.y, obj.getMtlParser().getMaterials()[i].specular.z, obj.getMtlParser().getMaterials()[i].specular.w);

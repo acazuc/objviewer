@@ -17,7 +17,7 @@ namespace objviewer
 		std::string line;
 		while (std::getline(ifs, line))
 		{
-			if (line.length() == 0 || line[0] == '#' || line[0] == ' ')
+			if (line.length() == 0 || line[0] == '#')
 				continue;
 			parseLine(line);
 		}
@@ -156,6 +156,8 @@ namespace objviewer
 		uint32_t vertexesIndices[3];
 		uint32_t normalsIndices[3];
 		uint32_t uvsIndices[3];
+		std::memset(vertexesIndices, 0, sizeof(vertexesIndices));
+		std::memset(normalsIndices, 0, sizeof(normalsIndices));
 		std::memset(uvsIndices, 0, sizeof(uvsIndices));
 		size_t pos = line.find('/', 2);
 		if (pos == std::string::npos || pos == 2)
@@ -295,7 +297,7 @@ namespace objviewer
 			WARN("Invalid face uv 2");
 			return;
 		}
-		if (uvsIndices[3] && this->uvsIndexes.size() < uvsIndices[2])
+		if (uvsIndices[2] && this->uvsIndexes.size() < uvsIndices[2])
 		{
 			WARN("Invalid face uv 3");
 			return;
