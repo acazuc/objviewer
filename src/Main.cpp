@@ -221,6 +221,12 @@ namespace objviewer
 			window->setTitle(title);
 			window->clearScreen();
 			window->pollEvents();
+			static bool vs = true;
+			if (window->isKeyDown(GLFW_KEY_V))
+			{
+				vs = !vs;
+				window->setVSync(vs);
+			}
 			prog->use();
 			{
 				double angle = 90 + window->getMouseX() / 4000. * 180;
