@@ -2,7 +2,7 @@ NAME = objviewer
 
 CC = g++
 
-CFLAGS = -Wall -Wextra -Werror -O2 -g -march=native #-flto=8
+CFLAGS = -Wall -Wextra -Werror -O2 -g -march=native -flto=8
 
 INCLUDES_PATH = include -I lib/glfw/include -I lib/glad/include -I lib/librender/include -I lib/glm -I lib/libformat/include
 

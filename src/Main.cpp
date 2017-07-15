@@ -69,13 +69,16 @@ void main()\n\
 	float distance = length(LightPosition_worldspace - Position_worldspace);\n\
 	vec3 n = normalize(Normal_cameraspace);\n\
 	vec3 l = normalize(LightDirection_cameraspace);\n\
-	float cosTheta = clamp(dot(n, l), 0, 1);\n\
+	float diffuseFactor = clamp(dot(n, l), 0, 1);\n\
 	vec3 E = normalize(EyeDirection_cameraspace);\n\
 	vec3 R = reflect(-l, n);\n\
-	float cosAlpha = clamp(dot(E, R), 0, 1);\n\
-	vec3 color = diffuseColor * LightColor * cosTheta * lightPower / clamp(((distance * distance) / 450), 0, 1) + ambientColor * vec3(ambientValue, ambientValue, ambientValue) + emissiveColor;\n\
+	float specularFactor = clamp(dot(E, R), 0, 1);\n\
+	vec3 diffuse = diffuseColor * LightColor * diffuseFactor * lightPower;\n\
+	vec3 ambient = ambientColor * vec3(ambientValue, ambientValue, ambientValue);\n\
+	vec3 color = diffuse + ambient + emissiveColor;\n\
+	vec3 specular = specularColor.xyz * LightColor * clamp(lightPower * pow(specularFactor, specularColor.w), 0, 1);\n\
 	vec4 texCol = texture2D(tex, UV);\n\
-	gl_FragColor = vec4(vec3(texCol) * color + clamp(specularColor.xyz * LightColor * lightPower * pow(cosAlpha, specularColor.w), 0, 1), opacity);\n\
+	gl_FragColor = vec4(vec3(texCol.xyz * color + specular), clamp(opacity * texCol.w, 0, 1));\n\
 }\n\
 "};
 
@@ -138,7 +141,7 @@ namespace objviewer
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glClearColor(0, 0, 0, 1);
 		window->show();
-		window->enableFullscreen();
+		//window->enableFullscreen();
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
 		glEnable(GL_CULL_FACE);
@@ -165,11 +168,14 @@ namespace objviewer
 		uint32_t partsCount = obj.getMtlParser().getMaterials().size();
 		GLuint vertexBuffer[partsCount];
 		glGenBuffers(partsCount, vertexBuffer);
+		uint32_t trianglesNumber = 0;
 		for (uint32_t i = 0; i < partsCount; ++i)
 		{
+			trianglesNumber += obj.getMtlParser().getMaterials()[i].vertices.size() / 3;
 			glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]);
 			glBufferData(GL_ARRAY_BUFFER, obj.getMtlParser().getMaterials()[i].vertices.size() * sizeof(glm::vec3), &obj.getMtlParser().getMaterials()[i].vertices[0], GL_STATIC_DRAW);
 		}
+		LOG("Triangles number: " << trianglesNumber);
 		GLuint normalBuffer[partsCount];
 		glGenBuffers(partsCount, normalBuffer);
 		for (uint32_t i = 0; i < partsCount; ++i)
@@ -195,8 +201,8 @@ namespace objviewer
 			glBindTexture(GL_TEXTURE_2D, textures[i]);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, datas);
 			delete[] (datas);
 		}
@@ -211,7 +217,7 @@ namespace objviewer
 		while (!window->closeRequested())
 		{
 			FpsManager::update();
-			std::string title = std::to_string(FpsManager::getFps());
+			std::string title = std::to_string(FpsManager::getFps()) + " fps";
 			window->setTitle(title);
 			window->clearScreen();
 			window->pollEvents();

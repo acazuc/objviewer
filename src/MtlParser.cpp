@@ -16,6 +16,7 @@ namespace objviewer
 		this->defaultMaterial.diffuse.x = 0.5;
 		this->defaultMaterial.diffuse.x = 0.5;
 		this->defaultMaterial.opacity = 1;
+		this->defaultMaterial.specular.w = 1;
 	}
 
 	void MtlParser::loadFile(std::string &file)
@@ -72,6 +73,7 @@ namespace objviewer
 		std::memset(&material, 0, sizeof(material));
 		material.name = materialName;
 		material.opacity = 1;
+		material.specular.w = 1;
 		this->materials.push_back(material);
 		this->currentMaterial = &this->materials.back();
 	}
