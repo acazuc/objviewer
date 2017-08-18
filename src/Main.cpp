@@ -10,8 +10,10 @@
 #include "FpsManager.h"
 #include "Debug.h"
 
+using librender::ProgramLocation;
 using librender::FragmentShader;
 using librender::VertexShader;
+using librender::DataBuffer;
 using librender::Program;
 
 static char vshad[] = {"#version 120\n\
@@ -20,40 +22,40 @@ attribute vec3 vertexPosition;\n\
 attribute vec3 vertexNormal;\n\
 attribute vec2 vertexUV;\n\
 \n\
-varying vec3 Normal_cameraspace;\n\
-varying vec3 LightDirection_cameraspace;\n\
-varying vec3 Position_worldspace;\n\
-varying vec3 EyeDirection_cameraspace;\n\
+varying vec3 normal_cameraspace;\n\
+varying vec3 lightDirection_cameraspace;\n\
+varying vec3 position_worldspace;\n\
+varying vec3 eyeDirection_cameraspace;\n\
 varying vec2 UV;\n\
 \n\
 uniform mat4 MVP;\n\
 uniform mat4 M;\n\
 uniform mat4 V;\n\
-uniform vec3 LightPosition_worldspace;\n\
+uniform vec3 lightPosition;\n\
 \n\
 void main()\n\
 {\n\
 	gl_Position =  MVP * vec4(vertexPosition, 1);\n\
-	Position_worldspace = (M * vec4(vertexPosition, 1)).xyz;\n\
+	position_worldspace = (M * vec4(vertexPosition, 1)).xyz;\n\
 	vec3 vertexPosition_cameraspace = (V * M * vec4(vertexPosition, 1)).xyz;\n\
-	EyeDirection_cameraspace = vec3(0,0,0) - vertexPosition_cameraspace;\n\
-	vec3 LightPosition_cameraspace = (V * vec4(LightPosition_worldspace, 1)).xyz;\n\
-	vec3 EyeDirection_cameraspace = vec3(0, 0, 0) - vertexPosition_cameraspace;\n\
-	LightDirection_cameraspace = LightPosition_cameraspace + EyeDirection_cameraspace;\n\
-	Normal_cameraspace = (V * M * vec4(vertexNormal, 0)).xyz;\n\
+	eyeDirection_cameraspace = vec3(0,0,0) - vertexPosition_cameraspace;\n\
+	vec3 lightPosition_cameraspace = (V * vec4(lightPosition, 1)).xyz;\n\
+	vec3 eyeDirection_cameraspace = vec3(0, 0, 0) - vertexPosition_cameraspace;\n\
+	lightDirection_cameraspace = lightPosition_cameraspace + eyeDirection_cameraspace;\n\
+	normal_cameraspace = (V * M * vec4(vertexNormal, 0)).xyz;\n\
 	UV = vertexUV;\n\
 }\n\
 "};
 
 static char fshad[] = {"#version 120\n\
 \n\
-varying vec3 Normal_cameraspace;\n\
-varying vec3 LightDirection_cameraspace;\n\
-varying vec3 Position_worldspace;\n\
-varying vec3 EyeDirection_cameraspace;\n\
+varying vec3 normal_cameraspace;\n\
+varying vec3 lightDirection_cameraspace;\n\
+varying vec3 position_worldspace;\n\
+varying vec3 eyeDirection_cameraspace;\n\
 varying vec2 UV;\n\
 \n\
-uniform vec3 LightPosition_worldspace;\n\
+uniform vec3 lightPosition;\n\
 uniform vec3 ambientColor;\n\
 uniform vec3 diffuseColor;\n\
 uniform vec4 specularColor;\n\
@@ -64,19 +66,19 @@ uniform sampler2D tex;\n\
 \n\
 void main()\n\
 {\n\
-	vec3 LightColor = vec3(1, 1, 1);\n\
+	vec3 lightColor = vec3(1, 1, 1);\n\
 	float lightPower = 1;\n\
-	float distance = length(LightPosition_worldspace - Position_worldspace);\n\
-	vec3 n = normalize(Normal_cameraspace);\n\
-	vec3 l = normalize(LightDirection_cameraspace);\n\
+	float distance = length(lightPosition - position_worldspace);\n\
+	vec3 n = normalize(normal_cameraspace);\n\
+	vec3 l = normalize(lightDirection_cameraspace);\n\
 	float diffuseFactor = clamp(dot(n, l), 0, 1);\n\
-	vec3 E = normalize(EyeDirection_cameraspace);\n\
+	vec3 E = normalize(eyeDirection_cameraspace);\n\
 	vec3 R = reflect(-l, n);\n\
 	float specularFactor = clamp(dot(E, R), 0, 1);\n\
-	vec3 diffuse = diffuseColor * LightColor * diffuseFactor * lightPower;\n\
+	vec3 diffuse = diffuseColor * lightColor * diffuseFactor * lightPower;\n\
 	vec3 ambient = ambientColor * vec3(ambientValue, ambientValue, ambientValue);\n\
 	vec3 color = diffuse + ambient + emissiveColor;\n\
-	vec3 specular = specularColor.xyz * LightColor * clamp(lightPower * pow(specularFactor, specularColor.w), 0, 1);\n\
+	vec3 specular = specularColor.xyz * lightColor * clamp(lightPower * pow(specularFactor, specularColor.w), 0, 1);\n\
 	vec4 texCol = texture2D(tex, UV);\n\
 	gl_FragColor = vec4(vec3(texCol.xyz * color + specular), clamp(opacity * texCol.w, 0, 1));\n\
 }\n\
@@ -148,40 +150,41 @@ namespace objviewer
 		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		glfwSetInputMode(window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		window->setVSync(true);
-		FragmentShader *frag = new FragmentShader(fshad, sizeof(fshad));
-		VertexShader *vert = new VertexShader(vshad, sizeof(vshad));
+		FragmentShader *frag = new FragmentShader(fshad);
+		VertexShader *vert = new VertexShader(vshad);
 		Program *prog = new Program(frag, vert);
-		GLint MatrixID = glGetUniformLocation(prog->getId(), "MVP");
-		GLint ViewMatrixID = glGetUniformLocation(prog->getId(), "V");
-		GLint ModelMatrixID = glGetUniformLocation(prog->getId(), "M");
-		GLint vertexPosition_modelspaceID = glGetAttribLocation(prog->getId(), "vertexPosition");
-		GLint vertexNormal_modelspaceID = glGetAttribLocation(prog->getId(), "vertexNormal");
-		GLint vertexUV_modelspaceID = glGetAttribLocation(prog->getId(), "vertexUV");
-		GLint AmbientColorID = glGetUniformLocation(prog->getId(), "ambientColor");
-		GLint DiffuseColorID = glGetUniformLocation(prog->getId(), "diffuseColor");
-		GLint SpecularColorID = glGetUniformLocation(prog->getId(), "specularColor");
-		GLint EmissiveColorID = glGetUniformLocation(prog->getId(), "emissiveColor");
-		GLint LightID = glGetUniformLocation(prog->getId(), "LightPosition_worldspace");
-		GLint TexID = glGetUniformLocation(prog->getId(), "tex");
-		GLint OpacityID = glGetUniformLocation(prog->getId(), "opacity");
-		GLint AmbientValueID = glGetUniformLocation(prog->getId(), "ambientValue");
+		ProgramLocation *matrixLocation = prog->getUniformLocation("MVP");
+		ProgramLocation *viewMatrixLocation = prog->getUniformLocation("V");
+		ProgramLocation *modelMatrixLocation = prog->getUniformLocation("M");
+		ProgramLocation *vertexPositionLocation = prog->getAttribLocation("vertexPosition");
+		vertexPositionLocation->setVertexAttribArray(true);
+		ProgramLocation *vertexNormalLocation = prog->getAttribLocation("vertexNormal");
+		vertexNormalLocation->setVertexAttribArray(true);
+		ProgramLocation *vertexUVLocation = prog->getAttribLocation("vertexUV");
+		vertexUVLocation->setVertexAttribArray(true);
+		ProgramLocation *ambientColorLocation = prog->getUniformLocation("ambientColor");
+		ProgramLocation *diffuseColorLocation = prog->getUniformLocation("diffuseColor");
+		ProgramLocation *specularColorLocation = prog->getUniformLocation("specularColor");
+		ProgramLocation *emissiveColorLocation = prog->getUniformLocation("emissiveColor");
+		ProgramLocation *lightPositionLocation = prog->getUniformLocation("lightPosition");
+		ProgramLocation *texLocation = prog->getUniformLocation("tex");
+		ProgramLocation *opacityLocation = prog->getUniformLocation("opacity");
+		ProgramLocation *ambientValueLocation = prog->getUniformLocation("ambientValue");
 		uint32_t partsCount = obj.getMtlParser().getMaterials().size();
-		GLuint vertexBuffer[partsCount];
-		glGenBuffers(partsCount, vertexBuffer);
+		DataBuffer *vertexBuffers = new DataBuffer[partsCount];
 		uint32_t trianglesNumber = 0;
 		for (uint32_t i = 0; i < partsCount; ++i)
 		{
 			trianglesNumber += obj.getMtlParser().getMaterials()[i].vertices.size() / 3;
-			glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]);
-			glBufferData(GL_ARRAY_BUFFER, obj.getMtlParser().getMaterials()[i].vertices.size() * sizeof(glm::vec3), &obj.getMtlParser().getMaterials()[i].vertices[0], GL_STATIC_DRAW);
+			MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
+			vertexBuffers[i].setData(GL_ARRAY_BUFFER, &material.vertices[0], material.vertices.size() * sizeof(glm::vec3), GL_FLOAT, 3, GL_STATIC_DRAW);
 		}
 		LOG("Triangles number: " << trianglesNumber);
-		GLuint normalBuffer[partsCount];
-		glGenBuffers(partsCount, normalBuffer);
+		DataBuffer *normalBuffers = new DataBuffer[partsCount];
 		for (uint32_t i = 0; i < partsCount; ++i)
 		{
-			glBindBuffer(GL_ARRAY_BUFFER, normalBuffer[i]);
-			glBufferData(GL_ARRAY_BUFFER, obj.getMtlParser().getMaterials()[i].normals.size() * sizeof(glm::vec3), &obj.getMtlParser().getMaterials()[i].normals[0], GL_STATIC_DRAW);
+			MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
+			normalBuffers[i].setData(GL_ARRAY_BUFFER, &material.normals[0], material.normals.size() * sizeof(glm::vec3), GL_FLOAT, 3, GL_STATIC_DRAW);
 		}
 		GLuint textures[partsCount];
 		glGenTextures(partsCount, textures);
@@ -206,12 +209,13 @@ namespace objviewer
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, datas);
 			delete[] (datas);
 		}
-		GLuint uvBuffer[partsCount];
-		glGenBuffers(partsCount, uvBuffer);
+		//GLuint uvBuffer[partsCount];
+		//glGenBuffers(partsCount, uvBuffer);
+		DataBuffer *uvBuffers = new DataBuffer[partsCount];
 		for (uint32_t i = 0; i < partsCount; ++i)
 		{
-			glBindBuffer(GL_ARRAY_BUFFER, uvBuffer[i]);
-			glBufferData(GL_ARRAY_BUFFER, obj.getMtlParser().getMaterials()[i].uvs.size() * sizeof(glm::vec3), &obj.getMtlParser().getMaterials()[i].uvs[0], GL_STATIC_DRAW);
+			MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
+			uvBuffers[i].setData(GL_ARRAY_BUFFER, &material.uvs[0], material.uvs.size() * sizeof(glm::vec3), GL_FLOAT, 2, GL_STATIC_DRAW);
 		}
 		FpsManager::init();
 		while (!window->closeRequested())
@@ -275,42 +279,35 @@ namespace objviewer
 				else if (spDown)
 					posY += MOVE_SPEED;
 			}
-			glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float) 1280 / (float)720, 0.1f, 1000.0f);
-			glm::mat4 View = glm::mat4(1.0f);
-			View = glm::rotate(View, glm::vec2(window->getMouseY() / 4000. * M_PI, 0).x, glm::vec3(1, 0, 0));
-			View = glm::rotate(View, glm::vec2(window->getMouseX() / 4000. * M_PI, 0).x, glm::vec3(0, 1, 0));
-			View = glm::translate(View, glm::vec3(-posX, -posY, -posZ));
-			glm::mat4 Model = glm::translate(glm::mat4(1.0f), glm::vec3(0, -2, 0));
-			glm::mat4 mvp = Projection * View * Model;
-			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
-			glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &View[0][0]);
-			glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &Model[0][0]);
-			glUniform3f(LightID, 4.85, 4.32, 5.44);
-			glEnableVertexAttribArray(vertexPosition_modelspaceID);
-			glEnableVertexAttribArray(vertexNormal_modelspaceID);
-			glEnableVertexAttribArray(vertexUV_modelspaceID);
+			glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float) 1280 / (float)720, 0.1f, 1000.0f);
+			glm::mat4 view = glm::mat4(1.0f);
+			view = glm::rotate(view, glm::vec2(window->getMouseY() / 4000. * M_PI, 0).x, glm::vec3(1, 0, 0));
+			view = glm::rotate(view, glm::vec2(window->getMouseX() / 4000. * M_PI, 0).x, glm::vec3(0, 1, 0));
+			view = glm::translate(view, glm::vec3(-posX, -posY, -posZ));
+			glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0, -2, 0));
+			glm::mat4 mvp = projection * view * model;
+			matrixLocation->setMat4f(mvp);
+			viewMatrixLocation->setMat4f(view);
+			modelMatrixLocation->setMat4f(model);
+			glm::vec3 lightPosition(4.85, 4.32, 5.44);
+			lightPositionLocation->setVec3f(lightPosition);
 			for (uint32_t i = 0; i < partsCount; ++i)
 			{
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, textures[i]);
-				glUniform1i(TexID, 0);
-				glUniform1f(AmbientValueID, 0.1);
-				glUniform3f(AmbientColorID, obj.getMtlParser().getMaterials()[i].ambient.x, obj.getMtlParser().getMaterials()[i].ambient.y, obj.getMtlParser().getMaterials()[i].ambient.z);
-				glUniform3f(DiffuseColorID, obj.getMtlParser().getMaterials()[i].diffuse.x, obj.getMtlParser().getMaterials()[i].diffuse.y, obj.getMtlParser().getMaterials()[i].diffuse.z);
-				glUniform4f(SpecularColorID, obj.getMtlParser().getMaterials()[i].specular.x, obj.getMtlParser().getMaterials()[i].specular.y, obj.getMtlParser().getMaterials()[i].specular.z, obj.getMtlParser().getMaterials()[i].specular.w);
-				glUniform3f(EmissiveColorID, obj.getMtlParser().getMaterials()[i].emissive.x, obj.getMtlParser().getMaterials()[i].emissive.y, obj.getMtlParser().getMaterials()[i].emissive.z);
-				glUniform1f(OpacityID, obj.getMtlParser().getMaterials()[i].opacity);
-				glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]);
-				glVertexAttribPointer(vertexPosition_modelspaceID, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-				glBindBuffer(GL_ARRAY_BUFFER, normalBuffer[i]);
-				glVertexAttribPointer(vertexNormal_modelspaceID, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-				glBindBuffer(GL_ARRAY_BUFFER, uvBuffer[i]);
-				glVertexAttribPointer(vertexUV_modelspaceID, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+				texLocation->setVec1i(0);
+				ambientValueLocation->setVec1f(0.1);
+				MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
+				ambientColorLocation->setVec3f(material.ambient);
+				diffuseColorLocation->setVec3f(material.diffuse);
+				specularColorLocation->setVec4f(material.specular);
+				emissiveColorLocation->setVec3f(material.emissive);
+				opacityLocation->setVec1f(material.opacity);
+				vertexPositionLocation->setDataBuffer(vertexBuffers[i]);
+				vertexNormalLocation->setDataBuffer(normalBuffers[i]);
+				vertexUVLocation->setDataBuffer(uvBuffers[i]);
 				glDrawArrays(GL_TRIANGLES, 0, obj.getMtlParser().getMaterials()[i].vertices.size());
 			}
-			glDisableVertexAttribArray(vertexPosition_modelspaceID);
-			glDisableVertexAttribArray(vertexNormal_modelspaceID);
-			glDisableVertexAttribArray(vertexUV_modelspaceID);
 			window->update();
 		}
 	}
