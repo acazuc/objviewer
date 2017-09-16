@@ -13,9 +13,12 @@ namespace objviewer
 	{
 		std::memset(&this->defaultMaterial, 0, sizeof(this->defaultMaterial));
 		this->defaultMaterial.diffuse.x = 0.5;
-		this->defaultMaterial.diffuse.x = 0.5;
-		this->defaultMaterial.diffuse.x = 0.5;
+		this->defaultMaterial.diffuse.y = 0.5;
+		this->defaultMaterial.diffuse.z = 0.5;
 		this->defaultMaterial.opacity = 1;
+		this->defaultMaterial.specular.x = 1;
+		this->defaultMaterial.specular.y = 1;
+		this->defaultMaterial.specular.z = 1;
 		this->defaultMaterial.specular.w = 1;
 	}
 
@@ -72,7 +75,13 @@ namespace objviewer
 		MtlMaterial material;
 		std::memset(&material, 0, sizeof(material));
 		material.name = materialName;
+		material.diffuse.x = .5;
+		material.diffuse.y = .5;
+		material.diffuse.z = .5;
 		material.opacity = 1;
+		material.specular.x = 1;
+		material.specular.y = 1;
+		material.specular.z = 1;
 		material.specular.w = 1;
 		this->materials.push_back(material);
 		this->currentMaterial = &this->materials.back();

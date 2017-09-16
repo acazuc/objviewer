@@ -13,7 +13,7 @@
 using librender::ProgramLocation;
 using librender::FragmentShader;
 using librender::VertexShader;
-using librender::DataBuffer;
+using librender::VertexBuffer;
 using librender::Program;
 
 static char vshad[] = {"#version 120\n\
@@ -140,7 +140,6 @@ namespace objviewer
 			ERROR("Failed to initialize OpenGL context");
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glClearColor(0, 0, 0, 1);
 		window->show();
 		//window->enableFullscreen();
@@ -152,12 +151,17 @@ namespace objviewer
 		window->setVSync(true);
 		FragmentShader *frag = new FragmentShader(fshad);
 		VertexShader *vert = new VertexShader(vshad);
-		Program *prog = new Program(frag, vert);
+		Program *prog = new Program();
+		prog->attachShader(vert);
+		prog->attachShader(frag);
+		prog->link();
 		ProgramLocation *matrixLocation = prog->getUniformLocation("MVP");
+		std::cout << matrixLocation->getLocation() << std::endl;
 		ProgramLocation *viewMatrixLocation = prog->getUniformLocation("V");
 		ProgramLocation *modelMatrixLocation = prog->getUniformLocation("M");
 		ProgramLocation *vertexPositionLocation = prog->getAttribLocation("vertexPosition");
 		vertexPositionLocation->setVertexAttribArray(true);
+		std::cout << vertexPositionLocation->getLocation() << std::endl;
 		ProgramLocation *vertexNormalLocation = prog->getAttribLocation("vertexNormal");
 		vertexNormalLocation->setVertexAttribArray(true);
 		ProgramLocation *vertexUVLocation = prog->getAttribLocation("vertexUV");
@@ -171,20 +175,20 @@ namespace objviewer
 		ProgramLocation *opacityLocation = prog->getUniformLocation("opacity");
 		ProgramLocation *ambientValueLocation = prog->getUniformLocation("ambientValue");
 		uint32_t partsCount = obj.getMtlParser().getMaterials().size();
-		DataBuffer *vertexBuffers = new DataBuffer[partsCount];
+		VertexBuffer *vertexBuffers = new VertexBuffer[partsCount];
 		uint32_t trianglesNumber = 0;
 		for (uint32_t i = 0; i < partsCount; ++i)
 		{
 			trianglesNumber += obj.getMtlParser().getMaterials()[i].vertices.size() / 3;
 			MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
-			vertexBuffers[i].setData(GL_ARRAY_BUFFER, &material.vertices[0], material.vertices.size() * sizeof(glm::vec3), GL_FLOAT, 3, GL_STATIC_DRAW);
+			vertexBuffers[i].setData(GL_ARRAY_BUFFER, material.vertices.data(), material.vertices.size() * sizeof(glm::vec3), GL_FLOAT, 3, GL_STATIC_DRAW);
 		}
 		LOG("Triangles number: " << trianglesNumber);
-		DataBuffer *normalBuffers = new DataBuffer[partsCount];
+		VertexBuffer *normalBuffers = new VertexBuffer[partsCount];
 		for (uint32_t i = 0; i < partsCount; ++i)
 		{
 			MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
-			normalBuffers[i].setData(GL_ARRAY_BUFFER, &material.normals[0], material.normals.size() * sizeof(glm::vec3), GL_FLOAT, 3, GL_STATIC_DRAW);
+			normalBuffers[i].setData(GL_ARRAY_BUFFER, material.normals.data(), material.normals.size() * sizeof(glm::vec3), GL_FLOAT, 3, GL_STATIC_DRAW);
 		}
 		GLuint textures[partsCount];
 		glGenTextures(partsCount, textures);
@@ -211,11 +215,11 @@ namespace objviewer
 		}
 		//GLuint uvBuffer[partsCount];
 		//glGenBuffers(partsCount, uvBuffer);
-		DataBuffer *uvBuffers = new DataBuffer[partsCount];
+		VertexBuffer *uvBuffers = new VertexBuffer[partsCount];
 		for (uint32_t i = 0; i < partsCount; ++i)
 		{
 			MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
-			uvBuffers[i].setData(GL_ARRAY_BUFFER, &material.uvs[0], material.uvs.size() * sizeof(glm::vec3), GL_FLOAT, 2, GL_STATIC_DRAW);
+			uvBuffers[i].setData(GL_ARRAY_BUFFER, material.uvs.data(), material.uvs.size() * sizeof(glm::vec3), GL_FLOAT, 2, GL_STATIC_DRAW);
 		}
 		FpsManager::init();
 		while (!window->closeRequested())
@@ -296,17 +300,17 @@ namespace objviewer
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, textures[i]);
 				texLocation->setVec1i(0);
-				ambientValueLocation->setVec1f(0.1);
+				ambientValueLocation->setVec1f(.1);
 				MtlMaterial &material = obj.getMtlParser().getMaterials()[i];
 				ambientColorLocation->setVec3f(material.ambient);
 				diffuseColorLocation->setVec3f(material.diffuse);
 				specularColorLocation->setVec4f(material.specular);
 				emissiveColorLocation->setVec3f(material.emissive);
 				opacityLocation->setVec1f(material.opacity);
-				vertexPositionLocation->setDataBuffer(vertexBuffers[i]);
-				vertexNormalLocation->setDataBuffer(normalBuffers[i]);
-				vertexUVLocation->setDataBuffer(uvBuffers[i]);
-				glDrawArrays(GL_TRIANGLES, 0, obj.getMtlParser().getMaterials()[i].vertices.size());
+				vertexPositionLocation->setVertexBuffer(vertexBuffers[i]);
+				vertexNormalLocation->setVertexBuffer(normalBuffers[i]);
+				vertexUVLocation->setVertexBuffer(uvBuffers[i]);
+				glDrawArrays(GL_TRIANGLES, 0, material.vertices.size());
 			}
 			window->update();
 		}
